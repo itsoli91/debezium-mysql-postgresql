@@ -1,0 +1,21 @@
+{
+    "name": "development_ftc-connector",
+    "config": {
+        "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+        "tasks.max": "1",
+        "database.hostname": "host.docker.internal",
+        "database.port": "3306",
+        "database.user": "root",
+        "database.password": "root",
+        "database.server.id": "184054",
+        "database.server.name": "development_ftc_database",
+        "database.include.list": "development_ftc",
+		"table.include.list": "development_ftc.cm_addons",
+        "database.history.kafka.bootstrap.servers": "kafka:29092",
+        "database.history.kafka.topic": "schema-changes.development_ftc",
+        "transforms": "route",
+        "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+        "transforms.route.regex": "([^.]+)\\.([^.]+)\\.([^.]+)",
+        "transforms.route.replacement": "$3"
+    }
+}

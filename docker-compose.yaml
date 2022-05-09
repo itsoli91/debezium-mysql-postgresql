@@ -1,0 +1,136 @@
+version: '3.8'
+services:
+
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:5.2.4
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+    networks:
+      - ftc_dev_network         
+  kafka:
+    container_name: kafka
+    image: confluentinc/cp-kafka:5.3.1
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 9997:9997
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      JMX_PORT: 9997
+      KAFKA_JMX_OPTS: -Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false -Djava.rmi.server.hostname=kafka -Dcom.sun.management.jmxremote.rmi.port=9997
+    networks:
+      - ftc_dev_network
+      
+  schemaregistry:
+    container_name: schemaregistry
+    image: confluentinc/cp-schema-registry:5.5.0
+    ports:
+      - 8085:8085
+    depends_on:
+      - zookeeper
+      - kafka
+    environment:
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: PLAINTEXT://kafka:29092
+      SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL: zookeeper:2181
+      SCHEMA_REGISTRY_KAFKASTORE_SECURITY_PROTOCOL: PLAINTEXT
+      SCHEMA_REGISTRY_HOST_NAME: schemaregistry
+      SCHEMA_REGISTRY_LISTENERS: http://schemaregistry:8085
+      SCHEMA_REGISTRY_SCHEMA_REGISTRY_INTER_INSTANCE_PROTOCOL: "http"
+      SCHEMA_REGISTRY_LOG4J_ROOT_LOGLEVEL: INFO
+      SCHEMA_REGISTRY_KAFKASTORE_TOPIC: _schemas      
+    networks:
+      - ftc_dev_network
+      
+  kafka-ui:
+    container_name: kafka-ui
+    image: provectuslabs/kafka-ui:latest
+    ports:
+      - 14007:8080
+    depends_on:
+      - zookeeper
+      - kafka
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+      KAFKA_CLUSTERS_0_JMXPORT: 9997
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schemaregistry:8085
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: first
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://connect:8083
+    networks:
+      - ftc_dev_network 
+#  kafka:
+#    container_name: kafka
+#    image: wurstmeister/kafka
+#    ports:
+#     - 9092
+#    environment:
+#      DOCKER_API_VERSION: 1.22
+#      KAFKA_ADVERTISED_HOST_NAME: 192.168.103.237
+#      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+#    volumes:
+#      - /var/run/docker.sock:/var/run/docker.sock
+#    networks:
+#      - ftc_dev_network
+#  postgres:
+#    image: quay.io/debezium/postgres:9.6
+#    ports:
+#     - "5432:5432"
+#    environment:
+#     - POSTGRES_USER=postgres
+#     - POSTGRES_PASSWORD=postgres
+#     - POSTGRES_DB=development_ftc
+#  elastic:
+#    image: docker.elastic.co/elasticsearch/elasticsearch:5.5.2
+#    ports:
+#     - "9200:9200"
+#    environment:
+#     - http.host=0.0.0.0
+#     - transport.host=127.0.0.1
+#     - xpack.security.enabled=false
+  connect:
+    container_name: connect
+    image: debezium/connect-jdbc-es:1.9
+    build:
+      context: debezium-jdbc-es
+      args:
+        DEBEZIUM_VERSION: 1.9
+    ports:
+     - 8083:8083
+     - 5005:5005
+    links:
+     - kafka
+    environment:
+     - BOOTSTRAP_SERVERS=kafka:29092
+     - GROUP_ID=1
+     - CONFIG_STORAGE_TOPIC=my_connect_configs
+     - OFFSET_STORAGE_TOPIC=my_connect_offsets
+     - STATUS_STORAGE_TOPIC=my_source_connect_statuses
+    networks:
+      - ftc_dev_network   
+      
+   
+  debezium-ui:
+    container_name: debezium-ui
+    image: 'debezium/debezium-ui:1.9'   
+    ports:
+     - '14006:8080'
+    environment:
+     - 'KAFKA_CONNECT_URIS=http://connect:8083'
+    networks:
+      - ftc_dev_network 
+
+networks:
+  ftc_dev_network:
+    external:
+      name: ftc_dev_network

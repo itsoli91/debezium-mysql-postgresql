@@ -1,0 +1,24 @@
+{
+    "name": "jdbc-sink",
+    "config": {
+        "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+        "tasks.max": "1",
+        "topics": "cm_addons",
+        "connection.url": "jdbc:postgresql://postgres:5432/PullToPushConverter?user=postgres&password=postgres",
+        "table.name.format":"AddonMaps",
+        "transforms": "unwrap,RenameField,RenameKey,castValues",
+        "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+        "transforms.unwrap.drop.tombstones": "false",
+        "transforms.RenameKey.type": "org.apache.kafka.connect.transforms.ReplaceField$Key",
+        "transforms.RenameKey.renames": "id:Id,addon_id:FTCAddonId,location_id:FTCLocationId,external_id:CMAddonId,external_name:CMAddonName,unlinked_by_cm:UnlinkedByCM",
+        "transforms.RenameField.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+        "transforms.RenameField.renames": "id:Id,addon_id:FTCAddonId,location_id:FTCLocationId,external_id:CMAddonId,external_name:CMAddonName,unlinked_by_cm:UnlinkedByCM",
+        "transforms.castValues.type": "org.apache.kafka.connect.transforms.Cast$Value",
+        "transforms.castValues.spec": "UnlinkedByCM:boolean",
+        "auto.create": "false",
+        "insert.mode": "upsert",
+        "delete.enabled": "true",
+        "pk.fields": "Id",
+        "pk.mode": "record_key"
+    }
+}
